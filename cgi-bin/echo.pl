@@ -1,12 +1,14 @@
 #!/usr/bin/perl
-
-
 use strict;
 use warnings;
+use utf8;
+use CGI;
+
+# Crear objeto CGI
+my $cgi = CGI->new;
+print $cgi->header('text/html');
 
 print <<EOF;
-Content-type: text/html
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -53,25 +55,62 @@ Content-type: text/html
     <div class="form-group">
       <div id="respAjax" class=""></div>
     </div>	
-
-    <button id="submitNoAJAX"   class="btn_submit btn btn-default">Submit with AJAX</button>
+    
     <button id="submitAJAX"   class="btn_submit btn btn-default">Submit with AJAX</button>
   </form>
+  <div id="tabla-container">
+    <!-- La tabla se insertará aquí con los datos -->
+  </div>
 </div>
 <script>
 
 \$(document).ready(function() {
-  
+  // Realizar una solicitud AJAX al script getDB.pl para obtener los datos de la base de datos
+  \$.ajax({
+    url: 'getDB.pl',  // URL del script Perl que recupera los datos de la base de datos
+    method: 'GET',
+    dataType: 'json',
+    success: function(response) {
+      console.log(response);
+      if (response.registros.length > 0) {
+        // Crear la tabla HTML con los datos
+        let tabla = "<table class='table table-bordered'>" +
+                        "<tr>" +
+                            "<th>Nombre</th>" +
+                            "<th>Dueño</th>" +
+                            "<th>Especie</th>" +
+                            "<th>Género</th>" +
+                            "<th>Fecha de Nacimiento</th>" +
+                            "<th>Fecha de Deceso</th>" +
+                        "</tr>";
+        
+        // Iterar sobre los registros y llenar la tabla
+        \$.each(response.registros, function(index, registros) {
+          tabla += "<tr>" +
+                       "<td>" + registros.name + "</td>" +
+                       "<td>" + registros.owner + "</td>" +
+                       "<td>" + registros.species + "</td>" +
+                       "<td>" + registros.sex + "</td>" +
+                       "<td>" + registros.birth + "</td>" +
+                       "<td>" + (registros.death ? registros.death : 'No disponible') + "</td>" +
+                   "</tr>";
+        });
+
+        tabla += "</table>";
+        \$('#tabla-container').html(tabla);  // Insertar la tabla generada en el contenedor
+      } else {
+        \$('#tabla-container').html('<p>No hay datos disponibles.</p>');
+      }
+    },
+    error: function(e) {
+        console.log(e);
+        \$('#tabla-container').html('<p>Error al cargar los datos.</p>');
+    }
+  });
 
 	\$('.btn_submit').on( 'click', function(e) {
 	
       var objectEvent=\$(this);
-
-      if(objectEvent.attr('id')==='submitNoAJAX'){ 
-			  console.log("submitNoAJAX");                           
-        \$('form').attr('action','myScript.pl'); 
-			  return true;     
-      }
 
 		  e.preventDefault();
 	   	if(objectEvent.attr('id')==='submitAJAX'){
@@ -84,7 +123,7 @@ Content-type: text/html
           especie: \$("#especie").val(),
           genero: \$("#genero").val(),
           fechaN: \$("#fechaN").val(),
-          fechaM: \$("#fechaM").val()
+          fechaM: \$("#fechaM").val() || null
         };
 
         if (!dt.nombre || !dt.dueno || !dt.especie || !dt.genero || !dt.fechaN) {
@@ -101,6 +140,13 @@ Content-type: text/html
                                   dataType: "json"
         });
 
+        var connectSQL =\$.ajax({
+                                  url: "getJson.pl",
+                                  type: "POST",
+                                  data: dt,
+                                  dataType: "json"
+        });
+
         request.done(function(dataset){
           console.log("success");
           console.log(dataset);
@@ -109,18 +155,37 @@ Content-type: text/html
           console.log(dataset.especiePERL);
           console.log(dataset.fechaNPERL);			
           \$('#respAjax').addClass("well");
-          \$('#respAjax').html("nombre="+dataset.nombrePERL+", dueño="+dataset.duenoPERL+
-          ", especie="+dataset.especiePERL+", genero="+dataset.generoPERL+
-          ", fechaN="+dataset.fechaNPERL+", fechaM="+dataset.fechaMPERL);
+          \$('#respAjax').html(
+              "<table border='1'>" +
+              "  <tr><th>Nombre</th><th>Dueño</th><th>Especie</th>"+ 
+              "<th>Género</th><th>Fecha de Nacimiento</th><th>Fecha de Deseso</th></tr>" +
+              "  <tr><td>" + dataset.nombrePERL + "</td>" +
+              "  <td>" + dataset.duenoPERL + "</td>" +
+              "  <td>" + dataset.especiePERL + "</td>" +
+              "  <td>" + dataset.generoPERL + "</td>" +
+              "  <td>" + dataset.fechaNPERL + "</td>" +
+              "  <td>" + dataset.fechaMPERL + "</td>" +
+              "  <td>ACTUALIZAR</td>" +
+              "  <td>BORRAR</td>" +
+              "  <td>" +
+              "  <button onclick='eliminarRegistro)' style='background:none;border:none;cursor:pointer;'>" +
+              "  </button> " +
+              "  <button onclick='actualizarRegistro' style='background:none;border:none;cursor:pointer;'>" +
+              "  </button>" +
+              "  </td>" +
+              "</tr>" +
+              "</table>"
+          );
         }); 
         
-        request.fail(function(jqXHR, textStatus) {
+        request.fail(function(jqXHR, textStatus, errorThrown) {
           alert("Request failed: " + textStatus);
-          console.log("jqXHR:", jqXHR);
-          console.log("jqXHR.responseText:", jqXHR.responseText);
-          console.log("jqXHR.status:", jqXHR.status);
+          console.log("Error details:");
+          console.log("Status: " + jqXHR.status);
+          console.log("Response text: " + jqXHR.responseText);
+          console.log("Error thrown: " + errorThrown);
         });
-	   	}
+      }
            //return true;            
 	}); 
 

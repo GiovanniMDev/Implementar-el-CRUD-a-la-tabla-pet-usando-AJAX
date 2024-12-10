@@ -58,8 +58,12 @@ RUN systemctl enable ssh
 
 COPY ./cgi-bin/echo.pl /usr/lib/cgi-bin
 COPY ./cgi-bin/myScriptAjax.pl  /usr/lib/cgi-bin
+COPY ./cgi-bin/getJson.pl  /usr/lib/cgi-bin
+COPY ./cgi-bin/getDB.pl  /usr/lib/cgi-bin
 RUN chmod +x /usr/lib/cgi-bin/echo.pl
 RUN chmod +x /usr/lib/cgi-bin/myScriptAjax.pl
+RUN chmod +x /usr/lib/cgi-bin/getJson.pl
+RUN chmod +x /usr/lib/cgi-bin/getDB.pl
 
 COPY -r menagerie /var/lib/mysql/
 
@@ -79,3 +83,7 @@ RUN systemctl restart mysql
 
 EXPOSE 80
 EXPOSE 22
+
+# docker build -f dockerfile.txt -t LabPWEB_Mejia_Subia .
+# docker run -d -p 8184:80 -p 2202:22 --name Contenedor_Mejia_Subia LabPWEB_Mejia_Subia
+
